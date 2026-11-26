@@ -1,0 +1,26 @@
+description: "Daily weather load: the extract Lambda writes the last LOOKBACK_DAYS days of Open-Meteo data to S3, then dlt loads the new files into Postgres."
+# UTC, the container's time zone: 22:00 UTC is 05:00 in Ho Chi Minh City, after the archive API has yesterday's data.
+schedule: "0 22 * * *"
+params:
+  - LOOKBACK_DAYS: 7
+  - DATA_INGESTION_REF: main
+  - INGEST_FUNCTION: mdb-prod-ingest-open-meteo
+
+steps:
+  - id: clone
+    run: rm -rf /tmp/data-ingestion && git clone --depth 1 --branch "${DATA_INGESTION_REF}" https://github.com/maison-douce-bakery/data-ingestion.git /tmp/data-ingestion
+
+  - id: extract
+    depends: [clone]
+    working_dir: /tmp/data-ingestion
+    run: /opt/dlt/bin/python -m open_meteo.invoke --function "${INGEST_FUNCTION}" --lookback-days "${LOOKBACK_DAYS}"
+    timeout_sec: 360 # seconds
+    retry_policy:
+      limit: 1
+      interval_sec: 30
+
+  - id: load
+    depends: [extract]
+    working_dir: /tmp/data-ingestion
+    run: /opt/dlt/bin/python -m open_meteo.load
+    timeout_sec: 600 # seconds
