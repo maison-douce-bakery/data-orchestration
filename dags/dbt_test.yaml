@@ -1,0 +1,22 @@
+description: Smoke test of the dbt setup against the database.
+params:
+  - DBT_REF: main
+
+steps:
+  - id: clone
+    run: rm -rf /tmp/data-transform && git clone --depth 1 --branch "${DBT_REF}" https://github.com/maison-douce-bakery/data-transform.git /tmp/data-transform
+
+  - id: debug
+    depends: [clone]
+    working_dir: /tmp/data-transform
+    run: dbt debug
+
+  - id: run
+    depends: [debug]
+    working_dir: /tmp/data-transform
+    run: dbt run --select stg_products
+
+  - id: show
+    depends: [run]
+    working_dir: /tmp/data-transform
+    run: dbt show --select stg_products --limit 5
