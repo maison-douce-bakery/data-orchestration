@@ -1,4 +1,4 @@
-description: Build the warehouse from data-transform (deps, then one dbt build: seeds, snapshots and models in dependency order).
+description: "Build the warehouse from data-transform: deps, then one dbt build that runs seeds, snapshots and models in dependency order."
 params:
   - DBT_REF: main
 
