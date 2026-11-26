@@ -1,0 +1,22 @@
+description: Build the warehouse from data-transform (deps, then one dbt build: seeds, snapshots and models in dependency order).
+params:
+  - DBT_REF: main
+
+steps:
+  - id: clone
+    run: rm -rf /tmp/data-transform && git clone --depth 1 --branch "${DBT_REF}" https://github.com/maison-douce-bakery/data-transform.git /tmp/data-transform
+
+  - id: deps
+    depends: [clone]
+    working_dir: /tmp/data-transform
+    run: dbt deps
+    timeout_sec: 120 # seconds
+    retry_policy:
+      limit: 2
+      interval_sec: 10
+
+  - id: build
+    depends: [deps]
+    working_dir: /tmp/data-transform
+    run: dbt build
+    timeout_sec: 1800 # seconds
