@@ -1,9 +1,10 @@
-description: "Daily weather load: the extract Lambda writes the last LOOKBACK_DAYS days of Open-Meteo data to S3, then dlt loads the new files into Postgres."
+description: "Daily weather load: the extract Lambda writes the last LOOKBACK_DAYS days of Open-Meteo data to S3, dlt loads the new files into Postgres, then dbt rebuilds the weather models."
 # UTC, the container's time zone: 22:00 UTC is 05:00 in Ho Chi Minh City, after the archive API has yesterday's data.
 schedule: "0 22 * * *"
 params:
   - LOOKBACK_DAYS: 7
   - DATA_INGESTION_REF: main
+  - DBT_REF: main
   - INGEST_FUNCTION: mdb-prod-ingest-open-meteo
 
 steps:
@@ -24,3 +25,22 @@ steps:
     working_dir: /tmp/data-ingestion
     run: /opt/dlt/bin/python -m open_meteo.load
     timeout_sec: 600 # seconds
+
+  - id: clone_transform
+    depends: [load]
+    run: rm -rf /tmp/data-transform && git clone --depth 1 --branch "${DBT_REF}" https://github.com/maison-douce-bakery/data-transform.git /tmp/data-transform
+
+  - id: deps
+    depends: [clone_transform]
+    working_dir: /tmp/data-transform
+    run: dbt deps
+    timeout_sec: 120 # seconds
+    retry_policy:
+      limit: 2
+      interval_sec: 10
+
+  - id: build_weather
+    depends: [deps]
+    working_dir: /tmp/data-transform
+    run: dbt build --select stg_open_meteo__hourly_weather+ branch_locations
+    timeout_sec: 900 # seconds
