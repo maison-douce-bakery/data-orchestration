@@ -1,0 +1,21 @@
+description: "Daily pipeline: weather_ingest (extract and load), then dbt_build (the whole warehouse)."
+# UTC, the container's time zone: 22:00 UTC is 05:00 in Ho Chi Minh City, after the archive API has yesterday's data.
+schedule: "0 22 * * *"
+params:
+  - LOOKBACK_DAYS: 7
+  - DATA_INGESTION_REF: main
+  - DBT_REF: main
+
+steps:
+  - id: ingest
+    action: dag.run
+    with:
+      dag: weather_ingest
+      params: "LOOKBACK_DAYS=${LOOKBACK_DAYS} DATA_INGESTION_REF=${DATA_INGESTION_REF}"
+
+  - id: build
+    depends: [ingest]
+    action: dag.run
+    with:
+      dag: dbt_build
+      params: "DBT_REF=${DBT_REF}"

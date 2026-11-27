@@ -1,6 +1,7 @@
 description: "Build the warehouse from data-transform: deps, then one dbt build that runs seeds, snapshots and models in dependency order."
 params:
   - DBT_REF: main
+  - DBT_ARGS: "" # extra dbt build arguments, e.g. --select stg_open_meteo__hourly_weather+ branch_locations
 
 steps:
   - id: clone
@@ -18,5 +19,5 @@ steps:
   - id: build
     depends: [deps]
     working_dir: /tmp/data-transform
-    run: dbt build
+    run: dbt build ${DBT_ARGS}
     timeout_sec: 1800 # seconds
