@@ -1,0 +1,16 @@
+description: "Registers or updates the Marmot PostgreSQL pipeline `bakery-postgres` from data-catalog, and sets the admin password on a fresh Marmot. It does not run the pipeline."
+params:
+  - CATALOG_REF: main
+
+steps:
+  - id: clone
+    run: rm -rf /tmp/data-catalog && git clone --depth 1 --branch "${CATALOG_REF}" https://github.com/maison-douce-bakery/data-catalog.git /tmp/data-catalog
+
+  - id: register
+    depends: [clone]
+    working_dir: /tmp/data-catalog
+    run: /opt/dlt/bin/python /tmp/data-catalog/scripts/register_postgres_pipeline.py
+    timeout_sec: 900 # seconds, includes waiting for Marmot plugins
+    retry_policy:
+      limit: 1
+      interval_sec: 30
