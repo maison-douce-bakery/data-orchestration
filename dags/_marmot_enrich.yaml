@@ -1,0 +1,20 @@
+description: "Enriches the synced Marmot catalog with business metadata from data-catalog and the commerce-api DDL. Pass --dry-run in ENRICH_ARGS to show the changes without writing them."
+params:
+  - CATALOG_REF: main
+  - APP_REF: main
+  - ENRICH_ARGS: "" # extra script arguments, e.g. --dry-run
+
+steps:
+  - id: clone_catalog
+    run: rm -rf /tmp/data-catalog && git clone --depth 1 --branch "${CATALOG_REF}" https://github.com/maison-douce-bakery/data-catalog.git /tmp/data-catalog
+
+  - id: clone_app
+    run: rm -rf /tmp/commerce-api && git clone --depth 1 --branch "${APP_REF}" https://github.com/maison-douce-bakery/commerce-api.git /tmp/commerce-api
+
+  - id: enrich
+    depends: [clone_catalog, clone_app]
+    working_dir: /tmp/data-catalog
+    env:
+      - BAKERY_DDL_DIR: /tmp/commerce-api/db
+    run: /opt/dlt/bin/python /tmp/data-catalog/enrichment/enrich_bakery_metadata.py ${ENRICH_ARGS}
+    timeout_sec: 900 # seconds
