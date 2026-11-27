@@ -6,7 +6,8 @@ FROM ghcr.io/dagucloud/dagu:2.27.0-alpine@sha256:bfe39d9ee261fcb69992308ef041922
 # dbt does not support the base image's Python 3.14, so uv installs a pinned Python 3.12 for it.
 # The weather pipeline gets its own venv (/opt/dlt, same Python); DAGs call /opt/dlt/bin/python directly.
 # Installs run as root; the base entrypoint drops to the dagu user at start.
-RUN apk add --no-cache git
+# openssl is upgraded to the patched Alpine build (ECR scan findings on 3.5.9-r0); drop it once the base image ships it.
+RUN apk add --no-cache git && apk upgrade --no-cache libcrypto3 libssl3
 COPY --from=uv /uv /usr/local/bin/uv
 COPY requirements.txt requirements-load.txt /tmp/
 RUN UV_PYTHON_INSTALL_DIR=/opt/python uv venv --python 3.12.16 --no-config /opt/dbt \
