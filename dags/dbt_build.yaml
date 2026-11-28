@@ -33,5 +33,5 @@ steps:
         exec dbt build ${DBT_ARGS}
       fi
       export OPENLINEAGE__TRANSPORT__URL="${MARMOT_URL}" OPENLINEAGE__TRANSPORT__AUTH__API_KEY="$token"
-      exec dbt-ol build ${DBT_ARGS}
+      exec /opt/dbt/bin/dbt-ol build ${DBT_ARGS}
     timeout_sec: 1800 # seconds
