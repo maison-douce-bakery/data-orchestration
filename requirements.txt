@@ -1,2 +1,3 @@
 dbt-core==1.11.17
 dbt-postgres==1.11.0
+openlineage-dbt==1.55.0

@@ -1,4 +1,4 @@
-description: "Build the warehouse from data-transform: deps, then one dbt build that runs seeds, snapshots and models in dependency order."
+description: "Build the warehouse from data-transform: deps, then one dbt build that runs seeds, snapshots and models in dependency order. Also sends lineage to Marmot when Marmot is reachable."
 params:
   - DBT_REF: main
   - DBT_ARGS: "" # extra dbt build arguments, e.g. --select stg_open_meteo__hourly_weather+ branch_locations
@@ -19,5 +19,19 @@ steps:
   - id: build
     depends: [deps]
     working_dir: /tmp/data-transform
-    run: dbt build ${DBT_ARGS}
+    env:
+      - OPENLINEAGE_NAMESPACE: prod
+      - OPENLINEAGE__TRANSPORT__TYPE: http
+      - OPENLINEAGE__TRANSPORT__TIMEOUT: "5"
+      - OPENLINEAGE__TRANSPORT__RETRY__TOTAL: "0"
+      - OPENLINEAGE__TRANSPORT__AUTH__TYPE: api_key
+    run: |
+      body=$(jq -nc --arg u admin --arg p "${MARMOT_ADMIN_PASSWORD}" '{username:$u,password:$p}')
+      token=$(wget -q -T 10 -O- --header 'Content-Type: application/json' --post-data "$body" "${MARMOT_URL}/api/v1/users/login" | jq -r '.access_token // empty') || token=""
+      if [ -z "$token" ]; then
+        echo "Marmot login failed: running dbt build without lineage"
+        exec dbt build ${DBT_ARGS}
+      fi
+      export OPENLINEAGE__TRANSPORT__URL="${MARMOT_URL}" OPENLINEAGE__TRANSPORT__AUTH__API_KEY="$token"
+      exec dbt-ol build ${DBT_ARGS}
     timeout_sec: 1800 # seconds
